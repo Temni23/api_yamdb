@@ -1,27 +1,22 @@
-
+import datetime as dt
 import random
 
 from django.core.mail import send_mail
-from rest_framework import viewsets, status
+from django.shortcuts import get_object_or_404
+from rest_framework import status
+from rest_framework import viewsets
 from rest_framework.decorators import api_view, action
 from rest_framework.generics import get_object_or_404
+from rest_framework.permissions import (IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 
+from reviews.models import Title, Review
 from users.models import User
-from .serializers import UserSerializer, JWTokenSerializer, MeSerializer
-import datetime as dt
-
-from rest_framework import viewsets
-from django.shortcuts import get_object_or_404
-from rest_framework.permissions import (IsAuthenticatedOrReadOnly)
-from django.db.models import Avg
-
-from users.models import User
+from .permissions import IsAuthorOrReadOnly
+from .serializers import JWTokenSerializer, MeSerializer
 from .serializers import (UserSerializer, CommentSerializer,
                           ReviewSerializer)
-from reviews.models import Title, Review
-from .permissions import IsAuthorOrReadOnly
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -71,7 +66,7 @@ def sign_up(request):
         user, create = User.objects.get_or_create(
             username=username,
             email=email,
-                    )
+        )
         user.confirmation_code = confirmation_code
         user.save()
     except Exception as error:
@@ -98,7 +93,6 @@ def get_jwtoken(request):
         jwtoken = str(AccessToken.for_user(user))
         return Response({"token": jwtoken}, status=status.HTTP_200_OK)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-=======
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
