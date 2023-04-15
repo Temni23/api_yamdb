@@ -1,5 +1,8 @@
 from rest_framework import serializers
+
 from users.models import User
+from reviews.models import Comment, Review
+
 
 class UserSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=150, required = True)
@@ -21,3 +24,23 @@ class JWTokenSerializer(serializers.Serializer):
     class Meta:
         model = User
         fields = ("username", "confirmation_code")
+
+class ReviewSerializer(serializers.ModelSerializer):
+    author = serializers.SlugRelatedField(read_only=True,
+                                          slug_field='username')
+
+    class Meta:
+        model = Review
+        read_only_fields = ('pub_date',)
+        exclude = ('title',)
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    author = serializers.SlugRelatedField(read_only=True,
+                                          slug_field='username')
+
+    class Meta:
+        model = Comment
+        read_only_fields = ('pub_date',)
+        exclude = ('review',)
+
