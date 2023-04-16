@@ -5,7 +5,7 @@ from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, action
-from rest_framework.filters import SearchFilter
+from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import (IsAuthenticatedOrReadOnly,
@@ -24,17 +24,17 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     lookup_field = "username"
-    permission_classes = (IsAdminOrSuperuser, )
+    permission_classes = (IsAdminOrSuperuser,)
     pagination_class = PageNumberPagination
-    filter_backends = (SearchFilter,)
-    filterset_fields = ('username')
+    filter_backends = (SearchFilter, OrderingFilter)
+    ordering_fields = ('username', 'email')
     search_fields = ('username',)
     http_method_names = [
         'get', 'post', 'patch', 'delete',
     ]
 
     @action(methods=["get", "patch"], detail=False, url_path="me",
-            permission_classes = (IsAuthorStaffOrReadOnly,))
+            permission_classes=(IsAuthenticated, IsAuthorStaffOrReadOnly,))
     def me(self, request):
         if request.method == "GET":
             user = get_object_or_404(User, username=self.request.user)
