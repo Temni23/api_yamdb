@@ -1,7 +1,8 @@
 from django.core import validators
+from django.utils import timezone
 from rest_framework import serializers
 
-from reviews.models import Comment, Review
+from reviews.models import Category, Genre, Title, Comment, Review
 from users.models import User
 
 
@@ -18,7 +19,6 @@ class UserSerializer(serializers.ModelSerializer):
         fields = (
             "username", "email", "first_name", "last_name", "bio", "role")
         model = User
-
 
     def validate(self, attrs):
         if User.objects.filter(email=attrs.get('email')).exists():
@@ -39,7 +39,7 @@ class UserSerializer(serializers.ModelSerializer):
 class MeSerializer(serializers.ModelSerializer):
     class Meta:
         fields = (
-        "username", "email", "first_name", "last_name", "bio", "role")
+            "username", "email", "first_name", "last_name", "bio", "role")
         model = User
         read_only_fields = ("role",)
 
@@ -51,6 +51,59 @@ class JWTokenSerializer(serializers.Serializer):
     class Meta:
         model = User
         fields = ("username", "confirmation_code")
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ('name', 'slug')
+
+
+class GenreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Genre
+        fields = ('name', 'slug')
+
+
+class TitleListSerializer(serializers.ModelSerializer):
+    category = CategorySerializer()
+    genre = GenreSerializer(many=True)
+
+    class Meta:
+        model = Title
+        fields = '__all__'
+
+
+class TitleDetailGetSerializer(serializers.ModelSerializer):
+    category = CategorySerializer()
+    genre = GenreSerializer(many=True)
+
+    class Meta:
+        model = Title
+        fields = '__all__'
+
+
+class TitleDetailSerializer(serializers.ModelSerializer):
+    category = serializers.SlugRelatedField(slug_field='slug',
+                                            queryset=Category.objects.all())
+    genre = serializers.SlugRelatedField(slug_field='slug',
+                                         queryset=Genre.objects.all(),
+                                         many=True)
+
+    class Meta:
+        model = Title
+        fields = '__all__'
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        year = attrs.get('year')
+        if year is not None:
+            current_year = timezone.now().year
+            if year > current_year:
+                raise serializers.ValidationError(
+                    'Год произведения не может быть больше текущего года'
+                )
+        return attrs
 
 
 class ReviewSerializer(serializers.ModelSerializer):
