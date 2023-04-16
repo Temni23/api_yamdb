@@ -1,11 +1,15 @@
 import datetime as dt
 import random
 
+
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, action
-from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.exceptions import MethodNotAllowed
+from rest_framework.filters import (SearchFilter, OrderingFilter,
+                                    BaseFilterBackend)
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import (IsAuthenticatedOrReadOnly,
@@ -13,10 +17,14 @@ from rest_framework.permissions import (IsAuthenticatedOrReadOnly,
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 
-from reviews.models import Title, Review
+from reviews.models import Category, Genre, Title, Review
 from users.models import User
-from .permissions import IsAuthorStaffOrReadOnly, IsAdminOrSuperuser
-from .serializers import (UserSerializer, CommentSerializer,
+from .permissions import (IsAuthorStaffOrReadOnly, IsAdminOrSuperuser,
+                          IsAdminOrSuperuserOrReadOnly)
+from .serializers import (UserSerializer, CategorySerializer,
+                          GenreSerializer, TitleListSerializer,
+                          TitleDetailSerializer, TitleDetailGetSerializer,
+                          CommentSerializer,
                           ReviewSerializer, JWTokenSerializer, MeSerializer)
 
 
@@ -110,6 +118,78 @@ def get_jwtoken(request):
         return Response({"token": jwtoken}, status=status.HTTP_200_OK)
     return Response("Неверный код подтверждения!",
                     status=status.HTTP_400_BAD_REQUEST)
+
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    serializer_class = CategorySerializer
+    queryset = Category.objects.all()
+    permission_classes = (IsAdminOrSuperuserOrReadOnly,)
+    pagination_class = PageNumberPagination
+    lookup_field = 'slug'
+    filter_backends = (SearchFilter,)
+    search_fields = ('name',)
+
+    def retrieve(self, request, *args, **kwargs):
+        raise MethodNotAllowed(request.method)
+
+    def update(self, request, *args, **kwargs):
+        raise MethodNotAllowed(request.method)
+
+
+class GenreViewSet(viewsets.ModelViewSet):
+    serializer_class = GenreSerializer
+    queryset = Genre.objects.all()
+    permission_classes = (IsAdminOrSuperuserOrReadOnly,)
+    pagination_class = PageNumberPagination
+    lookup_field = 'slug'
+    filter_backends = (SearchFilter,)
+    search_fields = ('name',)
+
+    def retrieve(self, request, *args, **kwargs):
+        raise MethodNotAllowed(request.method)
+
+    def update(self, request, *args, **kwargs):
+        raise MethodNotAllowed(request.method)
+
+
+class TitleViewSet(viewsets.ModelViewSet):
+    queryset = Title.objects.all()
+    permission_classes = (IsAdminOrSuperuserOrReadOnly,)
+    pagination_class = PageNumberPagination
+    filter_backends = (DjangoFilterBackend, )
+
+    def filter_queryset(self, queryset):
+        genre_slug = self.request.query_params.get('genre')
+        category_slug = self.request.query_params.get('category')
+        year = self.request.query_params.get('year')
+        name = self.request.query_params.get('name')
+
+        if genre_slug:
+            genre = get_object_or_404(Genre, slug=genre_slug)
+            queryset = queryset.filter(genre=genre)
+
+        if category_slug:
+            category = get_object_or_404(Category, slug=category_slug)
+            queryset = queryset.filter(category=category)
+
+        if year:
+            queryset = queryset.filter(year=year)
+
+        if name:
+            queryset = queryset.filter(name=name)
+
+        return queryset
+
+    filterset_fields = ('name', 'year')
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return TitleListSerializer
+        elif (self.action == 'update'
+              or self.action == 'partial_update' or self.action == 'create'):
+            return TitleDetailSerializer
+        elif self.action == 'retrieve':
+            return TitleDetailGetSerializer
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
