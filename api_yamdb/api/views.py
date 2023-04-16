@@ -126,9 +126,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAdminOrSuperuserOrReadOnly,)
     pagination_class = PageNumberPagination
     lookup_field = 'slug'
-    filter_backends = (SearchFilter,OrderingFilter)
+    filter_backends = (SearchFilter, OrderingFilter)
     search_fields = ('name',)
-    ordering_fields = ('name', 'slug')
     ordering = ('name',)
 
     def retrieve(self, request, *args, **kwargs):
@@ -138,30 +137,16 @@ class CategoryViewSet(viewsets.ModelViewSet):
         raise MethodNotAllowed(request.method)
 
 
-class GenreViewSet(viewsets.ModelViewSet):
+class GenreViewSet(CategoryViewSet):
     serializer_class = GenreSerializer
     queryset = Genre.objects.all()
-    permission_classes = (IsAdminOrSuperuserOrReadOnly,)
-    pagination_class = PageNumberPagination
-    lookup_field = 'slug'
-    filter_backends = (SearchFilter,OrderingFilter)
-    search_fields = ('name',)
-    ordering_fields = ('name', 'slug')
-    ordering = ('name',)
-
-    def retrieve(self, request, *args, **kwargs):
-        raise MethodNotAllowed(request.method)
-
-    def update(self, request, *args, **kwargs):
-        raise MethodNotAllowed(request.method)
 
 
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all()
     permission_classes = (IsAdminOrSuperuserOrReadOnly,)
     pagination_class = PageNumberPagination
-    filter_backends = (DjangoFilterBackend, OrderingFilter)
-    ordering_fields = ('name', )
+    filter_backends = (OrderingFilter, DjangoFilterBackend)
     ordering = ('name',)
 
     def get_serializer_class(self):
@@ -182,17 +167,14 @@ class TitleViewSet(viewsets.ModelViewSet):
         if genre_slug:
             genre = get_object_or_404(Genre, slug=genre_slug)
             queryset = queryset.filter(genre=genre)
-
         if category_slug:
             category = get_object_or_404(Category, slug=category_slug)
             queryset = queryset.filter(category=category)
-
         if year:
             queryset = queryset.filter(year=year)
-
         if name:
             queryset = queryset.filter(name=name)
-
+        queryset = queryset.order_by('name')
         return queryset
 
 
