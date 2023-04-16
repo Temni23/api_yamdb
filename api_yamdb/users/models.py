@@ -24,3 +24,15 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+    @property
+    def is_admin(self):
+        return self.role == User.ADMIN
+
+    @property
+    def is_user(self):
+        return self.role == User.USER
+
+    @property
+    def is_moderator(self):
+        return self.role == User.MODERATOR

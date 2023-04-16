@@ -6,13 +6,14 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, action
 from rest_framework.generics import get_object_or_404
-from rest_framework.permissions import (IsAuthenticatedOrReadOnly)
+from rest_framework.permissions import (IsAuthenticatedOrReadOnly,
+                                        IsAuthenticated)
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 
 from reviews.models import Title, Review
 from users.models import User
-from .permissions import IsAuthorOrReadOnly
+from .permissions import IsAuthorStaffOrReadOnly, IsAdmin
 from .serializers import (UserSerializer, CommentSerializer,
                           ReviewSerializer, JWTokenSerializer, MeSerializer)
 
@@ -21,8 +22,10 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     lookup_field = "username"
+    permission_classes = IsAuthenticated
 
-    @action(methods=["get", "patch"], detail=False, url_path="me")
+    @action(methods=["get", "patch"], detail=False, url_path="me",
+            permission_classes = IsAuthenticated)
     def me(self, request):
         if request.method == "GET":
             user = get_object_or_404(User, username=self.request.user)
@@ -35,7 +38,6 @@ class UserViewSet(viewsets.ModelViewSet):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-    # @action(permission_classes = (IsAdmin, ))
     def create(self, request, *args, **kwargs):
         serializer = UserSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -59,6 +61,9 @@ def sign_up(request):
     serializer.is_valid(raise_exception=True)
     confirmation_code = str(random.randint(1000, 9999))
     username = serializer.validated_data["username"]
+    if username == "me":
+        return Response("Нельзя выбрать имя me!",
+                        status=status.HTTP_400_BAD_REQUEST)
     email = serializer.validated_data["email"]
     try:
         user, create = User.objects.get_or_create(
@@ -85,17 +90,22 @@ def sign_up(request):
 def get_jwtoken(request):
     serializer = JWTokenSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    user = get_object_or_404(User, username=serializer.validated_data["username"])
+    user = get_object_or_404(User,
+                             username=serializer.validated_data["username"])
     confirmation_code = serializer.validated_data["confirmation_code"]
+    if not user or not confirmation_code:
+        return Response("Пропущены имя пользователя и (или) код "
+                        "потдтвержедния!", status=status.HTTP_400_BAD_REQUEST)
     if confirmation_code == user.confirmation_code:
         jwtoken = str(AccessToken.for_user(user))
         return Response({"token": jwtoken}, status=status.HTTP_200_OK)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response("Неверный код подтверждения!",
+                    status=status.HTTP_400_BAD_REQUEST)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
-    permission_classes = (IsAuthorOrReadOnly, IsAuthenticatedOrReadOnly)
+    permission_classes = (IsAuthorStaffOrReadOnly, IsAuthenticatedOrReadOnly)
 
     def perform_create(self, serializer):
         title = get_object_or_404(Title, pk=self.kwargs.get('title_id'))
@@ -109,7 +119,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
-    permission_classes = (IsAuthorOrReadOnly, IsAuthenticatedOrReadOnly)
+    permission_classes = (IsAuthorStaffOrReadOnly, IsAuthenticatedOrReadOnly)
 
     def perform_create(self, serializer):
         review = get_object_or_404(Review, pk=self.kwargs.get('review_id'))
