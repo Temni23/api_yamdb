@@ -1,6 +1,6 @@
+from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import UniqueConstraint
-from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
@@ -9,9 +9,6 @@ class Category(models.Model):
     name = models.CharField(max_length=256)
     slug = models.SlugField(max_length=50, unique=True)
 
-    class Meta:
-        ordering = ['name', 'slug']
-
     def __str__(self):
         return self.name
 
@@ -19,9 +16,6 @@ class Category(models.Model):
 class Genre(models.Model):
     name = models.CharField(max_length=256)
     slug = models.SlugField(max_length=50, unique=True)
-
-    class Meta:
-        ordering = ['name', 'slug']
 
     def __str__(self):
         return self.name
@@ -39,9 +33,6 @@ class Title(models.Model):
         related_name='titles'
     )
     genre = models.ManyToManyField(Genre)
-
-    class Meta:
-        ordering = ['name']
 
     def __str__(self):
         return self.name

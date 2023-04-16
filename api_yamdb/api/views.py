@@ -36,6 +36,7 @@ class UserViewSet(viewsets.ModelViewSet):
     filter_backends = (SearchFilter, OrderingFilter)
     ordering_fields = ('username', 'email')
     search_fields = ('username',)
+    ordering = ('username',)
     http_method_names = [
         'get', 'post', 'patch', 'delete',
     ]
@@ -125,8 +126,10 @@ class CategoryViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAdminOrSuperuserOrReadOnly,)
     pagination_class = PageNumberPagination
     lookup_field = 'slug'
-    filter_backends = (SearchFilter,)
+    filter_backends = (SearchFilter,OrderingFilter)
     search_fields = ('name',)
+    ordering_fields = ('name', 'slug')
+    ordering = ('name',)
 
     def retrieve(self, request, *args, **kwargs):
         raise MethodNotAllowed(request.method)
@@ -141,8 +144,10 @@ class GenreViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAdminOrSuperuserOrReadOnly,)
     pagination_class = PageNumberPagination
     lookup_field = 'slug'
-    filter_backends = (SearchFilter,)
+    filter_backends = (SearchFilter,OrderingFilter)
     search_fields = ('name',)
+    ordering_fields = ('name', 'slug')
+    ordering = ('name',)
 
     def retrieve(self, request, *args, **kwargs):
         raise MethodNotAllowed(request.method)
@@ -155,7 +160,9 @@ class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all()
     permission_classes = (IsAdminOrSuperuserOrReadOnly,)
     pagination_class = PageNumberPagination
-    filter_backends = (DjangoFilterBackend, )
+    filter_backends = (DjangoFilterBackend, OrderingFilter)
+    ordering_fields = ('name', )
+    ordering = ('name',)
 
     def get_serializer_class(self):
         if self.action == 'list':
