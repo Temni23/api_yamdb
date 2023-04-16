@@ -10,7 +10,7 @@ from .views import UserViewSet, sign_up, get_jwtoken, CommentViewSet, ReviewView
 app_name = "api"
 
 v1_router = DefaultRouter()
-v1_router.register("users", UserViewSet)
+v1_router.register(r"users", UserViewSet, basename="users")
 v1_router.register(
     r'posts/(?P<title_id>\d+)/reviews/(?P<review_id>\d+)/comments',
     CommentViewSet, basename='comments')

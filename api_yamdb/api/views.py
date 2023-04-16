@@ -5,7 +5,9 @@ from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, action
+from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import (IsAuthenticatedOrReadOnly,
                                         IsAuthenticated)
 from rest_framework.response import Response
@@ -13,7 +15,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 from reviews.models import Title, Review
 from users.models import User
-from .permissions import IsAuthorStaffOrReadOnly, IsAdmin
+from .permissions import IsAuthorStaffOrReadOnly, IsAdminOrSuperuser
 from .serializers import (UserSerializer, CommentSerializer,
                           ReviewSerializer, JWTokenSerializer, MeSerializer)
 
@@ -22,10 +24,17 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     lookup_field = "username"
-    permission_classes = IsAuthenticated
+    permission_classes = (IsAdminOrSuperuser, )
+    pagination_class = PageNumberPagination
+    filter_backends = (SearchFilter,)
+    filterset_fields = ('username')
+    search_fields = ('username',)
+    http_method_names = [
+        'get', 'post', 'patch', 'delete',
+    ]
 
     @action(methods=["get", "patch"], detail=False, url_path="me",
-            permission_classes = IsAuthenticated)
+            permission_classes = (IsAuthorStaffOrReadOnly,))
     def me(self, request):
         if request.method == "GET":
             user = get_object_or_404(User, username=self.request.user)
@@ -52,7 +61,7 @@ class UserViewSet(viewsets.ModelViewSet):
         except Exception as error:
             return Response(f"Ошибка при создании пользователя {error}",
                             status=status.HTTP_400_BAD_REQUEST)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 @api_view(["POST"])

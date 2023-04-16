@@ -15,8 +15,10 @@ class UserSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(max_length=254, required=True)
 
     class Meta:
-        fields = ("username", "email")
+        fields = (
+            "username", "email", "first_name", "last_name", "bio", "role")
         model = User
+
 
     def validate(self, attrs):
         if User.objects.filter(email=attrs.get('email')).exists():
