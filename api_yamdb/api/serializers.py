@@ -68,6 +68,7 @@ class GenreSerializer(serializers.ModelSerializer):
 class TitleListSerializer(serializers.ModelSerializer):
     category = CategorySerializer()
     genre = GenreSerializer(many=True)
+    rating = serializers.FloatField(read_only=True, default=0)
 
     class Meta:
         model = Title
@@ -77,6 +78,7 @@ class TitleListSerializer(serializers.ModelSerializer):
 class TitleDetailGetSerializer(serializers.ModelSerializer):
     category = CategorySerializer()
     genre = GenreSerializer(many=True)
+    rating = serializers.FloatField(read_only=True, default=0)
 
     class Meta:
         model = Title
@@ -89,6 +91,7 @@ class TitleDetailSerializer(serializers.ModelSerializer):
     genre = serializers.SlugRelatedField(slug_field='slug',
                                          queryset=Genre.objects.all(),
                                          many=True)
+    rating = serializers.FloatField(read_only=True, default=0)
 
     class Meta:
         model = Title
