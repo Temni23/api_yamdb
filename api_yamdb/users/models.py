@@ -3,8 +3,19 @@ from django.db import models
 
 
 class User(AbstractUser):
+    USER = 'user'
+    MODERATOR = 'moderator'
+    ADMIN = 'admin'
+
+    ROLE_CHOICES = (
+        (USER, 'Пользователь'),
+        (MODERATOR, 'Модератор'),
+        (ADMIN, 'Администратор'),
+    )
+
     bio = models.TextField("Биография", blank=True)
-    role = models.CharField("Роль пользователя", max_length=255, default="user")
+    role = models.CharField("Роль пользователя", max_length=25, choices=ROLE_CHOICES,
+                            default=USER)
     confirmation_code = models.CharField(
         max_length=100,
         blank=True,
