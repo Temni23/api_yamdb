@@ -8,8 +8,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, action
 from rest_framework.exceptions import MethodNotAllowed
-from rest_framework.filters import (SearchFilter, OrderingFilter,
-                                    BaseFilterBackend)
+from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import (IsAuthenticatedOrReadOnly,
@@ -24,8 +23,8 @@ from .permissions import (IsAuthorStaffOrReadOnly, IsAdminOrSuperuser,
 from .serializers import (UserSerializer, CategorySerializer,
                           GenreSerializer, TitleListSerializer,
                           TitleDetailSerializer, TitleDetailGetSerializer,
-                          CommentSerializer,
-                          ReviewSerializer, JWTokenSerializer, MeSerializer)
+                          CommentSerializer, ReviewSerializer,
+                          JWTokenSerializer, MeSerializer)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -158,6 +157,15 @@ class TitleViewSet(viewsets.ModelViewSet):
     pagination_class = PageNumberPagination
     filter_backends = (DjangoFilterBackend, )
 
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return TitleListSerializer
+        elif (self.action == 'update' or self.action == 'partial_update'
+              or self.action == 'create'):
+            return TitleDetailSerializer
+        elif self.action == 'retrieve':
+            return TitleDetailGetSerializer
+
     def filter_queryset(self, queryset):
         genre_slug = self.request.query_params.get('genre')
         category_slug = self.request.query_params.get('category')
@@ -179,17 +187,6 @@ class TitleViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(name=name)
 
         return queryset
-
-    filterset_fields = ('name', 'year')
-
-    def get_serializer_class(self):
-        if self.action == 'list':
-            return TitleListSerializer
-        elif (self.action == 'update'
-              or self.action == 'partial_update' or self.action == 'create'):
-            return TitleDetailSerializer
-        elif self.action == 'retrieve':
-            return TitleDetailGetSerializer
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
