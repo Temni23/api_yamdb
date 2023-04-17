@@ -65,37 +65,24 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = ('name', 'slug')
 
 
-class TitleListSerializer(serializers.ModelSerializer):
-    category = CategorySerializer()
-    genre = GenreSerializer(many=True)
+class TitleSerializer(serializers.ModelSerializer):
     rating = serializers.FloatField(read_only=True, default=0)
 
     class Meta:
         model = Title
         fields = '__all__'
 
-
-class TitleDetailGetSerializer(serializers.ModelSerializer):
-    category = CategorySerializer()
-    genre = GenreSerializer(many=True)
-    rating = serializers.FloatField(read_only=True, default=0)
-
-    class Meta:
-        model = Title
-        fields = '__all__'
-
-
-class TitleDetailSerializer(serializers.ModelSerializer):
-    category = serializers.SlugRelatedField(slug_field='slug',
-                                            queryset=Category.objects.all())
-    genre = serializers.SlugRelatedField(slug_field='slug',
-                                         queryset=Genre.objects.all(),
-                                         many=True)
-    rating = serializers.FloatField(read_only=True, default=0)
-
-    class Meta:
-        model = Title
-        fields = '__all__'
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        method = self.context['request'].method
+        if method == 'GET':
+            self.fields['category'] = CategorySerializer()
+            self.fields['genre'] = GenreSerializer(many=True)
+        else:
+            self.fields['category'] = serializers.SlugRelatedField(
+                slug_field='slug', queryset=Category.objects.all())
+            self.fields['genre'] = serializers.SlugRelatedField(
+                slug_field='slug', queryset=Genre.objects.all(), many=True)
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
