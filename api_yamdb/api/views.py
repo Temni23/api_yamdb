@@ -1,8 +1,10 @@
 import datetime as dt
 import random
 
-
+from django.db.models import Avg
+from django.db import IntegrityError
 from django.core.mail import send_mail
+from django.core.exceptions import BadRequest
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
@@ -10,7 +12,6 @@ from rest_framework.decorators import api_view, action
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.generics import get_object_or_404
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import (IsAuthenticatedOrReadOnly,
                                         IsAuthenticated)
 from rest_framework.response import Response
@@ -21,8 +22,7 @@ from users.models import User
 from .permissions import (IsAuthorStaffOrReadOnly, IsAdminOrSuperuser,
                           IsAdminOrSuperuserOrReadOnly)
 from .serializers import (UserSerializer, CategorySerializer,
-                          GenreSerializer, TitleListSerializer,
-                          TitleDetailSerializer, TitleDetailGetSerializer,
+                          GenreSerializer, TitleSerializer,
                           CommentSerializer, ReviewSerializer,
                           JWTokenSerializer, MeSerializer)
 
@@ -32,7 +32,6 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     lookup_field = "username"
     permission_classes = (IsAdminOrSuperuser,)
-    pagination_class = PageNumberPagination
     filter_backends = (SearchFilter, OrderingFilter)
     ordering_fields = ('username', 'email')
     search_fields = ('username',)
@@ -124,7 +123,6 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
     queryset = Category.objects.all()
     permission_classes = (IsAdminOrSuperuserOrReadOnly,)
-    pagination_class = PageNumberPagination
     lookup_field = 'slug'
     filter_backends = (SearchFilter, OrderingFilter)
     search_fields = ('name',)
@@ -143,20 +141,11 @@ class GenreViewSet(CategoryViewSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.all()
+    serializer_class = TitleSerializer
+    queryset = Title.objects.all().annotate(rating=Avg('reviews__score'))
     permission_classes = (IsAdminOrSuperuserOrReadOnly,)
-    pagination_class = PageNumberPagination
     filter_backends = (OrderingFilter, DjangoFilterBackend)
     ordering = ('name',)
-
-    def get_serializer_class(self):
-        if self.action == 'list':
-            return TitleListSerializer
-        elif (self.action == 'update' or self.action == 'partial_update'
-              or self.action == 'create'):
-            return TitleDetailSerializer
-        elif self.action == 'retrieve':
-            return TitleDetailGetSerializer
 
     def filter_queryset(self, queryset):
         genre_slug = self.request.query_params.get('genre')
@@ -181,20 +170,29 @@ class TitleViewSet(viewsets.ModelViewSet):
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
     permission_classes = (IsAuthorStaffOrReadOnly, IsAuthenticatedOrReadOnly)
+    filter_backends = (OrderingFilter,)
+    ordering = ('pub_date',)
 
     def perform_create(self, serializer):
-        title = get_object_or_404(Title, pk=self.kwargs.get('title_id'))
-        serializer.save(author=self.request.user,
-                        title=title, pub_date=dt.datetime.now())
+        try:
+            title = get_object_or_404(Title, pk=self.kwargs.get('title_id'))
+            serializer.save(author=self.request.user,
+                            title=title, pub_date=dt.datetime.now())
+        except IntegrityError:
+            raise BadRequest("На одно произведение можно оставить"
+                             "только один отзыв!")
 
     def get_queryset(self):
-        new_queryset = get_object_or_404(Title, pk=self.kwargs.get('title_id'))
+        new_queryset = get_object_or_404(Title,
+                                         pk=self.kwargs.get('title_id'))
         return new_queryset.reviews.all()
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
     permission_classes = (IsAuthorStaffOrReadOnly, IsAuthenticatedOrReadOnly)
+    filter_backends = (OrderingFilter,)
+    ordering = ('pub_date',)
 
     def perform_create(self, serializer):
         review = get_object_or_404(Review, pk=self.kwargs.get('review_id'))
