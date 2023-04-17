@@ -17,21 +17,28 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         fields = (
-            "username", "email", "first_name", "last_name", "bio", "role")
+            'username', 'email', 'first_name', 'last_name', 'bio', 'role')
         model = User
+
+    def validate_username(self, value):
+        if value == 'me':
+            raise serializers.ValidationError(
+                'Нельзя выбрать имя me!'
+            )
+        return value
 
     def validate(self, attrs):
         if User.objects.filter(email=attrs.get('email')).exists():
             user = User.objects.get(email=attrs.get('email'))
             if user.username != attrs.get('username'):
                 raise serializers.ValidationError(
-                    {"Этот email уже используется другим пользователем"}
+                    {'Этот email уже используется другим пользователем'}
                 )
         if User.objects.filter(username=attrs.get('username')).exists():
             user = User.objects.get(username=attrs.get('username'))
             if user.email != attrs.get('email'):
                 raise serializers.ValidationError(
-                    {"Это имя пользователя уже используется"}
+                    {'Это имя пользователя уже используется'}
                 )
         return super().validate(attrs)
 
@@ -39,9 +46,9 @@ class UserSerializer(serializers.ModelSerializer):
 class MeSerializer(serializers.ModelSerializer):
     class Meta:
         fields = (
-            "username", "email", "first_name", "last_name", "bio", "role")
+            'username', 'email', 'first_name', 'last_name', 'bio', 'role')
         model = User
-        read_only_fields = ("role",)
+        read_only_fields = ('role',)
 
 
 class JWTokenSerializer(serializers.Serializer):
@@ -50,7 +57,7 @@ class JWTokenSerializer(serializers.Serializer):
 
     class Meta:
         model = User
-        fields = ("username", "confirmation_code")
+        fields = ('username', 'confirmation_code')
 
 
 class CategorySerializer(serializers.ModelSerializer):
