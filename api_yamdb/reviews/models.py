@@ -9,29 +9,31 @@ class Category(models.Model):
     name = models.CharField(max_length=256)
     slug = models.SlugField(max_length=50, unique=True)
 
-    def __str__(self):
-        return self.name
-
     class Meta:
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
 
 
 class Genre(models.Model):
     name = models.CharField(max_length=256)
     slug = models.SlugField(max_length=50, unique=True)
 
-    def __str__(self):
-        return self.name
-
     class Meta:
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
 
 
 class Title(models.Model):
     name = models.CharField(max_length=256)
-    year = models.PositiveIntegerField()
+    year = models.PositiveIntegerField(db_index=True)
     description = models.TextField(blank=True, null=True)
     category = models.ForeignKey(
         Category,
@@ -42,20 +44,17 @@ class Title(models.Model):
     )
     genre = models.ManyToManyField(Genre)
 
-    def __str__(self):
-        return self.name
-
     class Meta:
         verbose_name = 'Произведение'
         verbose_name_plural = 'Произведения'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
 
 
 class Review(models.Model):
-    SCORE_CHOICES = [(1, '1'), (2, '2'),
-                     (3, '3'), (4, '4'),
-                     (5, '5'), (6, '6'),
-                     (7, '7'), (8, '8'),
-                     (9, '9'), (10, '10')]
+    SCORE_CHOICES = [(i, str(i)) for i in range(1, 11)]
     author = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='reviews')
     title = models.ForeignKey(
@@ -71,6 +70,7 @@ class Review(models.Model):
         ]
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
+        ordering = ['pub_date']
 
     def __str__(self):
         return self.text
@@ -85,9 +85,10 @@ class Comment(models.Model):
     pub_date = models.DateTimeField(
         'Дата добавления', auto_now_add=True)
 
-    def __str__(self):
-        return self.text
-
     class Meta:
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
+        ordering = ['pub_date']
+
+    def __str__(self):
+        return self.text

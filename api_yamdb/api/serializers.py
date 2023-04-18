@@ -28,14 +28,16 @@ class UserSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        if User.objects.filter(email=attrs.get('email')).exists():
-            user = User.objects.get(email=attrs.get('email'))
+        user = User.objects.filter(email=attrs.get('email'))
+        if user.exists():
+            user = user.first()
             if user.username != attrs.get('username'):
                 raise serializers.ValidationError(
                     {'Этот email уже используется другим пользователем'}
                 )
-        if User.objects.filter(username=attrs.get('username')).exists():
-            user = User.objects.get(username=attrs.get('username'))
+        user = User.objects.filter(username=attrs.get('username'))
+        if user.exists():
+            user = user.first()
             if user.email != attrs.get('email'):
                 raise serializers.ValidationError(
                     {'Это имя пользователя уже используется'}
@@ -73,6 +75,10 @@ class GenreSerializer(serializers.ModelSerializer):
 
 
 class TitleSerializer(serializers.ModelSerializer):
+    category = serializers.SlugRelatedField(slug_field='slug',
+                                            queryset=Category.objects.all())
+    genre = serializers.SlugRelatedField(slug_field='slug',
+                                         queryset=Genre.objects.all(), many=True)
     rating = serializers.FloatField(read_only=True, default=0)
 
     class Meta:
@@ -80,16 +86,18 @@ class TitleSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def __init__(self, *args, **kwargs):
+        # Комментарий для Ревьювера: вы писали "Почему мы не можем использовать
+        # один сериалайзер для всех методов." В документации для GET запроса для
+        # жаноров и категорий указано "category": "string" и "slug": "string",
+        # в то время как для остальных запросов только "category": "string" без
+        # "slug": "string" по этому чтоб не писать лишние сериалайзеры мы выбрали
+        # такое решение.  Других более рацианальных вариантов не нашли.
         super().__init__(*args, **kwargs)
         method = self.context['request'].method
         if method == 'GET':
             self.fields['category'] = CategorySerializer()
             self.fields['genre'] = GenreSerializer(many=True)
-        else:
-            self.fields['category'] = serializers.SlugRelatedField(
-                slug_field='slug', queryset=Category.objects.all())
-            self.fields['genre'] = serializers.SlugRelatedField(
-                slug_field='slug', queryset=Genre.objects.all(), many=True)
+        super().__init__(*args, **kwargs)
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -104,18 +112,24 @@ class TitleSerializer(serializers.ModelSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    author = serializers.SlugRelatedField(read_only=True,
-                                          slug_field='username')
+    author = serializers.SlugRelatedField(
+        slug_field='username',
+        queryset=User.objects.all(),
+        default=serializers.CurrentUserDefault()
+    )
 
     class Meta:
         model = Review
-        read_only_fields = ('pub_date',)
+        read_only_fields = ('pub_date', 'author')
         exclude = ('title',)
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    author = serializers.SlugRelatedField(read_only=True,
-                                          slug_field='username')
+    author = serializers.SlugRelatedField(
+        slug_field='username',
+        queryset=User.objects.all(),
+        default=serializers.CurrentUserDefault()
+    )
 
     class Meta:
         model = Comment

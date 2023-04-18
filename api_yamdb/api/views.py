@@ -1,6 +1,4 @@
-import datetime as dt
-import random
-
+from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import BadRequest
 from django.core.mail import send_mail
 from django.db import IntegrityError
@@ -17,6 +15,7 @@ from rest_framework.permissions import (IsAuthenticatedOrReadOnly,
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 
+from api_yamdb.settings import DOMAIN_NAME
 from reviews.models import Category, Genre, Title, Review
 from users.models import User
 from .permissions import (IsAuthorStaffOrReadOnly, IsAdminOrSuperuser,
@@ -60,7 +59,7 @@ class UserViewSet(viewsets.ModelViewSet):
         username = serializer.validated_data['username']
         email = serializer.validated_data['email']
         try:
-            user, create = User.objects.get_or_create(
+            user, _ = User.objects.get_or_create(
                 username=username,
                 email=email,
             )
@@ -75,14 +74,14 @@ class UserViewSet(viewsets.ModelViewSet):
 def sign_up(request):
     serializer = UserSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    confirmation_code = str(random.randint(1000, 9999))
     username = serializer.validated_data['username']
     email = serializer.validated_data['email']
     try:
-        user, create = User.objects.get_or_create(
+        user, _ = User.objects.get_or_create(
             username=username,
             email=email,
         )
+        confirmation_code = default_token_generator.make_token(user)
         user.confirmation_code = confirmation_code
         user.save()
     except Exception as error:
@@ -92,8 +91,8 @@ def sign_up(request):
         'Код подтверждения регистрации на yamdb',
         f'Код подтверждения регистрации пользователья {username} \n'
         f'КОД: {confirmation_code}',
-        'conform@yamdb.com',
-        [email],
+        recipient_list=[email],
+        from_email=DOMAIN_NAME,
         fail_silently=False,
     )
     return Response(serializer.data, status=status.HTTP_200_OK)
@@ -121,9 +120,10 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     permission_classes = (IsAdminOrSuperuserOrReadOnly,)
     lookup_field = 'slug'
-    filter_backends = (SearchFilter, OrderingFilter)
+    filter_backends = (SearchFilter,)
     search_fields = ('name',)
-    ordering = ('name',)
+
+    # ordering = ('name',)
 
     def retrieve(self, request, *args, **kwargs):
         raise MethodNotAllowed(request.method)
@@ -141,8 +141,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     serializer_class = TitleSerializer
     queryset = Title.objects.all().annotate(rating=Avg('reviews__score'))
     permission_classes = (IsAdminOrSuperuserOrReadOnly,)
-    filter_backends = (OrderingFilter, DjangoFilterBackend)
-    ordering = ('name',)
+    filter_backends = (DjangoFilterBackend,)
 
     def filter_queryset(self, queryset):
         genre_slug = self.request.query_params.get('genre')
@@ -160,43 +159,38 @@ class TitleViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(year=year)
         if name:
             queryset = queryset.filter(name=name)
-        queryset = queryset.order_by('name')
-        return queryset
+        return queryset.order_by('name')
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
     permission_classes = (IsAuthorStaffOrReadOnly, IsAuthenticatedOrReadOnly)
-    filter_backends = (OrderingFilter,)
-    ordering = ('pub_date',)
 
     def perform_create(self, serializer):
         try:
             title = get_object_or_404(Title, pk=self.kwargs.get('title_id'))
-            serializer.save(author=self.request.user,
-                            title=title, pub_date=dt.datetime.now())
+            serializer.save(title=title)
         except IntegrityError:
             raise BadRequest('На одно произведение можно оставить'
                              'только один отзыв!')
 
     def get_queryset(self):
-        new_queryset = get_object_or_404(Title,
-                                         pk=self.kwargs.get('title_id'))
+        new_queryset = get_object_or_404(Title, pk=self.kwargs.get('title_id'))
         return new_queryset.reviews.all()
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
     permission_classes = (IsAuthorStaffOrReadOnly, IsAuthenticatedOrReadOnly)
-    filter_backends = (OrderingFilter,)
-    ordering = ('pub_date',)
 
     def perform_create(self, serializer):
-        review = get_object_or_404(Review, pk=self.kwargs.get('review_id'))
-        serializer.save(author=self.request.user,
-                        review=review, pub_date=dt.datetime.now())
+        id_comment = self.kwargs.get('review_id')
+        title_id = self.kwargs.get('title_id')
+        review = get_object_or_404(Review, pk=id_comment, title__id=title_id)
+        serializer.save(review=review)
 
     def get_queryset(self):
-        new_queryset = get_object_or_404(
-            Review, pk=self.kwargs.get('review_id'))
+        id_comment = self.kwargs.get('review_id')
+        title_id = self.kwargs.get('title_id')
+        new_queryset = get_object_or_404(Review, pk=id_comment, title__id=title_id)
         return new_queryset.comments.all()
