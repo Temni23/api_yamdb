@@ -28,14 +28,16 @@ class UserSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        if User.objects.filter(email=attrs.get('email')).exists():
-            user = User.objects.get(email=attrs.get('email'))
+        user = User.objects.filter(email=attrs.get('email'))
+        if user.exists():
+            user = user.first()
             if user.username != attrs.get('username'):
                 raise serializers.ValidationError(
                     {'Этот email уже используется другим пользователем'}
                 )
-        if User.objects.filter(username=attrs.get('username')).exists():
-            user = User.objects.get(username=attrs.get('username'))
+        user = User.objects.filter(username=attrs.get('username'))
+        if user.exists():
+            user = user.first()
             if user.email != attrs.get('email'):
                 raise serializers.ValidationError(
                     {'Это имя пользователя уже используется'}
@@ -104,18 +106,24 @@ class TitleSerializer(serializers.ModelSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    author = serializers.SlugRelatedField(read_only=True,
-                                          slug_field='username')
+    author = serializers.SlugRelatedField(
+        slug_field='username',
+        queryset=User.objects.all(),
+        default=serializers.CurrentUserDefault()
+    )
 
     class Meta:
         model = Review
-        read_only_fields = ('pub_date',)
+        read_only_fields = ('pub_date', 'author')
         exclude = ('title',)
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    author = serializers.SlugRelatedField(read_only=True,
-                                          slug_field='username')
+    author = serializers.SlugRelatedField(
+        slug_field='username',
+        queryset=User.objects.all(),
+        default=serializers.CurrentUserDefault()
+    )
 
     class Meta:
         model = Comment
