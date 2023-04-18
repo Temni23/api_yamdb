@@ -78,7 +78,8 @@ class TitleSerializer(serializers.ModelSerializer):
     category = serializers.SlugRelatedField(slug_field='slug',
                                             queryset=Category.objects.all())
     genre = serializers.SlugRelatedField(slug_field='slug',
-                                         queryset=Genre.objects.all(), many=True)
+                                         queryset=Genre.objects.all(),
+                                         many=True)
     rating = serializers.FloatField(read_only=True, default=0)
 
     class Meta:
@@ -86,12 +87,14 @@ class TitleSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def __init__(self, *args, **kwargs):
-        # Комментарий для Ревьювера: вы писали "Почему мы не можем использовать
-        # один сериалайзер для всех методов." В документации для GET запроса для
-        # жаноров и категорий указано "category": "string" и "slug": "string",
-        # в то время как для остальных запросов только "category": "string" без
-        # "slug": "string" по этому чтоб не писать лишние сериалайзеры мы выбрали
-        # такое решение.  Других более рацианальных вариантов не нашли.
+        # Комментарий для Ревьювера: вы писали "Почему мы не можем
+        # использоватьодин сериалайзер для всех методов."
+        # В документации для GET запроса для жаноров и категорий
+        # указано "category": "string" и "slug": "string",
+        # в то время как для остальных запросов только "category":
+        # "string" без"slug": "string" по этому чтоб не писать лишние
+        # сериалайзеры мы выбрали такое решение.
+        # Других более рацианальных вариантов не нашли.
         super().__init__(*args, **kwargs)
         method = self.context['request'].method
         if method == 'GET':

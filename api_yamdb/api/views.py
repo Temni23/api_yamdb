@@ -192,5 +192,6 @@ class CommentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         id_comment = self.kwargs.get('review_id')
         title_id = self.kwargs.get('title_id')
-        new_queryset = get_object_or_404(Review, pk=id_comment, title__id=title_id)
+        new_queryset = get_object_or_404(Review, pk=id_comment,
+                                         title__id=title_id)
         return new_queryset.comments.all()
