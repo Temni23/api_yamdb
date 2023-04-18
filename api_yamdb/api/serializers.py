@@ -100,7 +100,6 @@ class TitleSerializer(serializers.ModelSerializer):
         if method == 'GET':
             self.fields['category'] = CategorySerializer()
             self.fields['genre'] = GenreSerializer(many=True)
-        super().__init__(*args, **kwargs)
 
     def validate(self, attrs):
         attrs = super().validate(attrs)

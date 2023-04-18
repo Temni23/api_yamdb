@@ -123,8 +123,6 @@ class CategoryViewSet(viewsets.ModelViewSet):
     filter_backends = (SearchFilter,)
     search_fields = ('name',)
 
-    # ordering = ('name',)
-
     def retrieve(self, request, *args, **kwargs):
         raise MethodNotAllowed(request.method)
 
